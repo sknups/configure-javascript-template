@@ -1,0 +1,61 @@
+---
+name: 'Build'
+
+description: |
+  Builds a pure JavaScript project.
+
+runs:
+  using: composite
+  steps:
+
+    - name: Execute ShellCheck
+      uses: ludeeus/action-shellcheck@master
+
+    - name: Execute YAMLlint
+      shell: bash
+      run: yamllint .
+
+    - name: Install Node.js v18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Configure npm
+      shell: bash
+      run: .github/actions/build/configure-npm.sh
+
+    - name: Analyse dependencies
+      id: 'dependencies'
+      shell: bash
+      run: .github/actions/build/analyse-dependencies.sh
+
+    - name: Authenticate Google Cloud
+      if: steps.dependencies.outputs.authenticate == 'true'
+      id: 'auth'
+      uses: 'google-github-actions/auth@v2'
+      with:
+        workload_identity_provider: ${{ steps.dependencies.outputs.workload_identity_provider }}
+        service_account: ${{ steps.dependencies.outputs.service_account }}
+
+    # authentication will fail unless your Git Repository is included in "npm_internal_reader_repositories";
+    # see https://github.com/sknups/sknups-terraform/blob/main/main.tf
+
+    - name: Authenticate Artifact Registry
+      if: steps.dependencies.outputs.authenticate == 'true'
+      shell: bash
+      run: npm run auth
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+
+    - name: Install npm dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Execute ESLint
+      shell: bash
+      run: npm run lint
+
+    - name: Execute Typescript compiler
+      shell: bash
+      run: npm run compile

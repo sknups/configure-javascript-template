@@ -1,0 +1,36 @@
+---
+name: 'Publish'
+
+description: |
+  Publishes an npm package to SKNUPS Artifact Registry.
+
+runs:
+  using: composite
+  steps:
+
+    - name: Parse package.json
+      id: 'parse'
+      shell: bash
+      run: .github/actions/publish/parse-package-json.sh
+
+    - name: Select service account
+      if: steps.parse.outputs.action == 'publish'
+      id: 'select'
+      shell: bash
+      run: .github/actions/publish/select-service-account.sh
+      env:
+        SCOPE: ${{ steps.parse.outputs.scope }}
+
+    - name: Authenticate service account
+      if: steps.parse.outputs.action == 'publish'
+      id: 'auth'
+      uses: 'google-github-actions/auth@v2'
+      with:
+        workload_identity_provider: ${{ steps.select.outputs.workload_identity_provider }}
+        service_account: ${{ steps.select.outputs.service_account }}
+
+    - name: Publish npm package
+      if: steps.parse.outputs.action == 'publish'
+      uses: sknups/publish-npm-package@v2
+      with:
+        credentials_file_path: ${{ steps.auth.outputs.credentials_file_path }}
