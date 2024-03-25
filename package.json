@@ -10,10 +10,10 @@
   "author": "SKNUPS",
   "type": "module",
   "exports": "./index.js",
+  "bin": "./index.js",
   "files": [
     "index.js"
   ],
-  "bin": "./index.js",
   "scripts": {
     "auth": "npx google-artifactregistry-auth@latest",
     "compile": "npx tsc -p ./tsconfig.json",

@@ -44,7 +44,7 @@ runs:
     - name: Authenticate Artifact Registry
       if: steps.dependencies.outputs.authenticate == 'true'
       shell: bash
-      run: npm run auth
+      run: npx --yes google-artifactregistry-auth@latest
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
 

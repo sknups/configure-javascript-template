@@ -97,7 +97,7 @@ function build {
   if [[ "${OFFLINE}" == "false" ]] ; then
 
     echo "Authenticating npm..."
-    npm run auth --silent || error
+    npx --yes google-artifactregistry-auth@latest --silent || error
 
     echo "Installing npm dependencies..."
     npm install --silent || error
