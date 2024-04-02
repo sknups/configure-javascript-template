@@ -7,6 +7,7 @@ import inquirer from 'inquirer';
 
 const PACKAGE_JSON = 'package.json';
 const INDEX_JS = 'index.js';
+const NPM_CONFIGURATION = '.npmrc';
 const ENCODING = 'utf8';
 
 /**
@@ -34,6 +35,24 @@ const SKNUPS = {
 };
 
 export { SKNUPS };
+`;
+
+/**
+ * The project's .npmrc file is overwritten with this,
+ * if the user indicates they depend on @sknups-internal packages.
+ */
+const NPM_CONFIGURATION_INTERNAL = `@sknups:registry=https://europe-west2-npm.pkg.dev/sknups/npm/
+@sknups-internal:registry=https://europe-west2-npm.pkg.dev/sknups/npm-internal/
+//europe-west2-npm.pkg.dev/sknups/npm-internal/:always-auth=true
+engine-strict=true
+`;
+
+/**
+ * The project's .npmrc file is overwritten with this,
+ * if the user indicates they do NOT depend on @sknups-internal packages.
+ */
+const NPM_CONFIGURATION_PUBLIC = `@sknups:registry=https://europe-west2-npm.pkg.dev/sknups/npm/
+engine-strict=true
 `;
 
 /**
@@ -100,6 +119,18 @@ async function writePackageJson (key, value) {
  */
 async function writeIndexJs (data) {
   await writeFile(INDEX_JS, data, ENCODING);
+}
+
+/**
+ * @param {boolean} internal
+ * @returns {Promise<void>}
+ */
+async function writeNpmConfiguration (internal) {
+  if (internal) {
+    await writeFile(NPM_CONFIGURATION, NPM_CONFIGURATION_INTERNAL, ENCODING);
+  } else {
+    await writeFile(NPM_CONFIGURATION, NPM_CONFIGURATION_PUBLIC, ENCODING);
+  }
 }
 
 /**
@@ -184,6 +215,9 @@ async function askProjectName (git) {
  * @returns {Promise<'script'|'library'>}
  */
 async function askProjectNature () {
+  /**
+   * @type {{nature: 'script'|'library'}}
+   */
   const answers = await inquirer.prompt([
     {
       type: 'list',
@@ -204,6 +238,9 @@ async function askProjectNature () {
  * @returns {Promise<boolean>}
  */
 async function askIfDependsOnInternalPackages () {
+  /**
+   * @type {{depends: boolean}}
+   */
   const answers = await inquirer.prompt([
     {
       type: 'list',
@@ -223,6 +260,9 @@ async function askIfDependsOnInternalPackages () {
  * @returns {Promise<'@sknups'|'@sknups-internal'>}
  */
 async function askProjectScope () {
+  /**
+   * @type {{scope: '@sknups'|'@sknups-internal'}}
+   */
   const answers = await inquirer.prompt([
     {
       type: 'list',
@@ -267,6 +307,9 @@ async function handleScript (git, name) {
   if (await askIfDependsOnInternalPackages()) {
     await authenticateLocalUser();
     printTerraformMessage('npm_internal_reader_repositories', git.repository);
+    await writeNpmConfiguration(true);
+  } else {
+    await writeNpmConfiguration(false);
   }
 
 }
@@ -293,6 +336,9 @@ async function handleLibrary (git, name) {
   if (scope === '@sknups-internal') {
     if (await askIfDependsOnInternalPackages()) {
       await authenticateLocalUser();
+      await writeNpmConfiguration(true);
+    } else {
+      await writeNpmConfiguration(false);
     }
     printTerraformMessage('npm_internal_writer_repositories', git.repository);
   }
